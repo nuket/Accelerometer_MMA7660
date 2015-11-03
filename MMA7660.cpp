@@ -128,17 +128,13 @@ void MMA7660::getXYZ(int8_t *x, int8_t *y, int8_t *z)
     *z = (char) (values[2] << 2) >> 2; // ((char)(val[2]<<2))/4;
 }
 
-void MMA7660::getAcceleration(float *ax,float *ay,float *az)
+void MMA7660::getAcceleration(float *ax, float *ay, float *az)
 {
-    static const float COUNTS_PER_G = 21.33;
-    
     int8_t x, y, z;
     getXYZ(&x, &y, &z);
     
-    *ax = x / COUNTS_PER_G;
-    *ay = y / COUNTS_PER_G;
-    *az = z / COUNTS_PER_G;
+    *ax = x / MMA7660_COUNTS_PER_G;
+    *ay = y / MMA7660_COUNTS_PER_G;
+    *az = z / MMA7660_COUNTS_PER_G;
 }
-
-
 
