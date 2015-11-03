@@ -36,7 +36,22 @@
 #include <Wire.h>
 #include "MMA7660.h"
 
-/*Function: Write a byte to the register of the MMA7660*/
+MMA7660::MMA7660(Stream& console) :
+    console(console),
+    debug(true)
+{
+}
+
+void MMA7660::debugPrint(const String& output)
+{
+    if (debug)
+    {
+        console.print("MMA7660: ");
+        console.println(output);
+    }
+}
+
+/* Function: Write a byte to the register of the MMA7660 */
 void MMA7660::write(uint8_t _register, uint8_t _data)
 {
     Wire.beginTransmission(MMA7660_ADDR);
@@ -52,19 +67,23 @@ uint8_t MMA7660::read(uint8_t _register)
 
     Wire.beginTransmission(MMA7660_ADDR);
     Wire.write(_register); 
-    Wire.endTransmission();
-    Wire.beginTransmission(MMA7660_ADDR);
-    Wire.requestFrom(MMA7660_ADDR,1);
-    while(Wire.available())
+//    Wire.endTransmission();
+//    
+//    Wire.beginTransmission(MMA7660_ADDR);
+    Wire.requestFrom(MMA7660_ADDR, 1);
+    while (Wire.available())
     {
         data_read = Wire.read();
     }
     Wire.endTransmission();
+    
     return data_read;
 }
 
 void MMA7660::init()
 {
+    debugPrint("init");
+    
     Wire.begin();
     setMode(MMA7660_STAND_BY);
     setSampleRate(AUTO_SLEEP_32);
@@ -73,50 +92,53 @@ void MMA7660::init()
 
 void MMA7660::setMode(uint8_t mode)
 {
-    write(MMA7660_MODE,mode);
+    write(MMA7660_MODE, mode);
 }
 
 void MMA7660::setSampleRate(uint8_t rate)
 {
-    write(MMA7660_SR,rate);
+    write(MMA7660_SR, rate);
 }
 
-/*Function: Get the contents of the registers in the MMA7660*/
-/*          so as to calculate the acceleration.            */
+/* Function: Get the contents of the registers in the MMA7660 */
+/*           so as to calculate the acceleration.             */
 void MMA7660::getXYZ(int8_t *x, int8_t *y, int8_t *z)
 {
-    unsigned char val[3] = {64, 64, 64};
+    uint8_t values[3] = { 0 };
     int count = 0;
 
     // Clear the bus.
-    while(Wire.available() > 0)
+    while (Wire.available() > 0)
         Wire.read();
 
-    Wire.requestFrom(MMA7660_ADDR,3);
-    while(Wire.available())  
+    Wire.requestFrom(MMA7660_ADDR, 3);
+    while (Wire.available() && count < 3)
     {
-        if(count < 3)
-        {
-            while ( val[count] > 63 )  // reload the damn thing it is bad
-            {
-                val[count] = Wire.read();
-            }
-        }
+        uint8_t data = Wire.read();
+        if (data & 0x40) continue; // Alert bit was set, so reread.
+
+        // Otherwise, the value was good.
+        values[count] = data;
         count++;
     }
-
-    // Sign-extending.
-    *x = ((char)(val[0]<<2))/4;
-    *y = ((char)(val[1]<<2))/4;
-    *z = ((char)(val[2]<<2))/4;
+ 
+    // Bytesex!
+    *x = (char) (values[0] << 2) >> 2;
+    *y = (char) (values[1] << 2) >> 2;
+    *z = (char) (values[2] << 2) >> 2; // ((char)(val[2]<<2))/4;
 }
 
 void MMA7660::getAcceleration(float *ax,float *ay,float *az)
 {
-    int8_t x,y,z;
-    getXYZ(&x,&y,&z);
-    *ax = x/21.00;
-    *ay = y/21.00;
-    *az = z/21.00;
+    static const float COUNTS_PER_G = 21.33;
+    
+    int8_t x, y, z;
+    getXYZ(&x, &y, &z);
+    
+    *ax = x / COUNTS_PER_G;
+    *ay = y / COUNTS_PER_G;
+    *az = z / COUNTS_PER_G;
 }
+
+
 

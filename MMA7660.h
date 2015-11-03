@@ -58,12 +58,21 @@
 #define MMA7660_PDET  0x09  // Tap Detection
 #define MMA7660_PD    0x0A  // Tap Debounce Count
 
+class Stream;
+class String;
+
 class MMA7660
 {
 private:
+    Stream& console;
+    bool    debug;
+    
     void write(uint8_t _register, uint8_t _data);
     uint8_t read(uint8_t _register);
+
+    void debugPrint(const String&);
 public:
+    MMA7660(Stream& console);
     void init();
     void setMode(uint8_t mode);
     void setSampleRate(uint8_t rate);
